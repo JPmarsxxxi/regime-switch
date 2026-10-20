@@ -171,9 +171,10 @@ def candidates(price, rf_daily, cfg: Config | None = None, hmm_raw=None):
 
 
 def default_test_start(cands, cfg: Config):
-    """First day on which every candidate of every model has a full validation window behind it."""
+    """Start of the first month whose selection (made at the previous month end) sees a full validation window for
+    every candidate of every model."""
     first = max(s.first_valid_index() for model in cands.values() for s in model.values())
-    return first + pd.DateOffset(years=cfg.val_years)
+    return (first + pd.DateOffset(years=cfg.val_years, months=1)).to_period("M").to_timestamp()
 
 
 def evaluate(r, rf, cands, cfg: Config, test_start):

@@ -138,7 +138,7 @@ def self_similarity(segs_a, segs_b, n=1000, sigma=0.1, seed=0):
 
 
 def synthetic_run(model, seed, h1=35, h2=28, k=2, p=1, with_hmmlearn=True):
-    """One run of the Sec. 3.3 experiment. Returns accuracy dicts per method plus centroid moments."""
+    """See DEVIATIONS.md#H2. One run of the Sec. 3.3 experiment. Returns accuracy dicts per method plus centroid moments."""
     x, on = (horvath_gbm if model == "gbm" else horvath_merton)(seed)
     segs, starts = lift(x, h1, h2)
     out = {}

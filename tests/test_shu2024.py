@@ -74,4 +74,10 @@ def test_default_test_start_waits_for_the_latest_candidate():
     late.iloc[400:] = 1.0
     cfg = shu2024.Config(val_years=2)
     start = shu2024.default_test_start({"HMM": {0: early}, "JM": {0.0: early, 5.0: late}}, cfg)
-    assert start == idx[400] + pd.DateOffset(years=2)
+    assert start == (idx[400] + pd.DateOffset(years=2, months=1)).to_period("M").to_timestamp()
+    r = pd.Series(np.random.default_rng(0).normal(0.0005, 0.01, 3000), index=pd.bdate_range("2000-01-03", periods=3000))
+    late_r = late.copy()
+    late_r.index = r.index
+    late_r.iloc[400:] = np.random.default_rng(1).integers(0, 2, 2600)
+    bear, _ = shu2024.cross_validate({0.0: late_r}, r, r * 0, cfg, start)
+    assert bear.loc[start:].notna().all()
