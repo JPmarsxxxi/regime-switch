@@ -98,37 +98,36 @@ HI = np.array([0.01, 0.01, np.log(1e-2), np.log(1e-2), np.log(0.9999 / 0.0001), 
 
 
 @njit(cache=True)
-def _adapt(x, theta0, I0, n0, f, A, lo, hi, ridge):
+def _adapt(x, theta0, R0, n0, f, A, lo, hi):
     T = x.size
     thetas = np.full((T, P), np.nan)
     theta = theta0.copy()
-    I = I0.copy()
-    damp = ridge * np.diag(np.diag(I0))  # see DEVIATIONS.md#N4
+    R = R0.copy()
     thetas[n0 - 1] = theta
     for t in range(n0, T):
         g, s, _, _ = score_pass(x[: t + 1], theta, f)
-        I = f * I + (1 - f) * np.outer(s, s)
-        theta = np.minimum(np.maximum(theta + A * np.linalg.solve(I + damp, g), lo), hi)  # eq. 7, projected
+        R = f * R + np.outer(s, s)  # see DEVIATIONS.md#N4
+        theta = np.minimum(np.maximum(theta + A * np.linalg.solve(R, g), lo), hi)  # eq. 7, projected
         thetas[t] = theta
     return thetas
 
 
-def adaptive_estimates(x, n_eff=260, n_init_obs=260, seed=0, ridge=0.1):
-    """Eq. 7 with exponential forgetting, f = 1 - 1/N_eff and A = 1/N_eff, run from day `n_init_obs`. The first
-    `n_init_obs` observations initialise it: a neutral persistent start (both means at the sample mean, variances at
-    half and twice the sample variance, P(stay) = 0.98) refined by the recursion itself over those days, with the
-    Fisher information started from the mean outer product of their scores. Returns (T, 6) theta_t, NaN before
-    n_init_obs - 1. State 1 is the low-variance state. See DEVIATIONS.md#N3."""
+def adaptive_estimates(x, n_eff=260, n_init_obs=260):
+    """Eq. 7 with exponential forgetting, f = 1 - 1/N_eff and A = 1/N_eff, run from day `n_init_obs`. The Fisher
+    information is accumulated with the same forgetting, R_t = f R_{t-1} + s_t s_t' (the recursive form the paper's
+    matrix-inversion-lemma remark implies). The first `n_init_obs` observations initialise it: a neutral persistent
+    start (both means at the sample mean, variances at half and twice the sample variance, P(stay) = 0.98) refined by
+    the recursion over those days, with R started at N_eff times the mean outer product of their scores.
+    Returns (T, 6) theta_t, NaN before n_init_obs - 1. See DEVIATIONS.md#N3."""
     x = np.ascontiguousarray(x, dtype=float)
     f = 1 - 1 / n_eff
     x0 = x[:n_init_obs]
     theta0 = pack(np.full(2, x0.mean()), x0.var() * np.array([0.5, 2.0]), 0.98, 0.98)
-    _, _, sc, _ = score_pass(x0[:20], theta0, f)
-    I0 = sc.T @ sc / 20
-    warm = _adapt(x0, theta0, I0, 20, f, 1 / n_eff, LO, HI, ridge)[-1]
+    _, _, sc, _ = score_pass(x0, theta0, f)
+    R0 = n_eff * sc.T @ sc / n_init_obs
+    warm = _adapt(x0, theta0, R0, 20, f, 1 / n_eff, LO, HI)[-1]
     _, _, sc, _ = score_pass(x0, warm, f)
-    I1 = sc.T @ sc / n_init_obs
-    return _adapt(x, warm, I1, n_init_obs, f, 1 / n_eff, LO, HI, ridge)
+    return _adapt(x, warm, n_eff * sc.T @ sc / n_init_obs, n_init_obs, f, 1 / n_eff, LO, HI)
 
 
 def filtered_probs(x, thetas):
@@ -143,7 +142,8 @@ def filtered_probs(x, thetas):
     for t in range(start + 1, x.size):
         mu, var, g = unpack(thetas[t])
         G = np.array([[g[0], 1 - g[0]], [1 - g[1], g[1]]])
-        u = (alpha @ G) * np.exp(-0.5 * (x[t] - mu) ** 2 / var) / np.sqrt(var)
+        lp = -0.5 * (x[t] - mu) ** 2 / var - 0.5 * np.log(var)
+        u = (alpha @ G) * np.exp(lp - lp.max())
         alpha = u / u.sum()
         out[t] = alpha
     return out
@@ -261,7 +261,7 @@ def run(log_returns: pd.Series, cfg: Config | None = None, test_start=None, conf
     """Returns (thetas DataFrame, dict[(gamma, rho, delay)] -> Result, metrics DataFrame incl. buy-and-hold)."""
     cfg = cfg or Config()
     x = log_returns.to_numpy()
-    thetas = adaptive_estimates(x, cfg.n_eff, cfg.n_init_obs, cfg.seed)
+    thetas = adaptive_estimates(x, cfg.n_eff, cfg.n_init_obs)
     alpha = filtered_probs(x, thetas)
     start = cfg.n_init_obs - 1 if test_start is None else int(log_returns.index.searchsorted(test_start)) - 1
     means = np.full((x.size, cfg.K), np.nan)

@@ -116,7 +116,14 @@ def main():
                                                         others[n][1].items()}
     lines += ["## Headline claims", "", "| Claim | Verdict | Numbers |", "|---|---|---|"]
     lines += [f"| {c} | {'REPRODUCED' if ok else 'NOT REPRODUCED'} | {n} |" for c, ok, n in claims]
-    lines += ["", f"MPC solver failures (held the portfolio that day): {fails}.", "",
+    box = {}
+    for n in INDICES:
+        t = (sp[0] if n == "S&P500" else others[n][0]).dropna()
+        raw = np.column_stack([t.mu1, t.mu2, np.log(t.var1), np.log(t.var2), np.log(t.gamma11 / (1 - t.gamma11)),
+                               np.log(t.gamma22 / (1 - t.gamma22))])
+        box[n] = int((np.isclose(raw, ny.LO) | np.isclose(raw, ny.HI)).any(axis=1).sum())
+    lines += ["", f"MPC solver failures (held the portfolio that day): {fails}.",
+              f"Days with a parameter on the safety box (DEVIATIONS.md#N4): {box}.", "",
               "## Estimated HMM parameters (S&P 500, year ends; state 1 = lower variance)", ""]
     th = th.dropna()
     swap = th.var1 > th.var2

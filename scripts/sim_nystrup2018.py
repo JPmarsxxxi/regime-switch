@@ -41,7 +41,8 @@ def run_seed(seed):
     hi = np.array([ordered(t)[1][1] for t in th[259:]])
     pred = alpha[np.arange(259, x.size), hi] > 0.5
     truth = path.states[259:]
-    row = {"seed": seed, **dict(zip(NAMES, est)),
+    on_box = (np.isclose(th[259:], ny.LO) | np.isclose(th[259:], ny.HI)).any(axis=1)
+    row = {"seed": seed, **dict(zip(NAMES, est)), "days on safety box": int(on_box.sum()),
            "adaptive bal.acc": balanced_accuracy(pred, truth),
            "oracle bal.acc": balanced_accuracy(oracle_filter(path)[259:], truth)}
     means = np.full((x.size, 100), np.nan)
