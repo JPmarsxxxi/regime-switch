@@ -138,7 +138,7 @@ Fast suite: `pytest -q` passes in under 5 minutes. Slow suite: `pytest -q -m slo
 8. MPC sanity: with gamma=rho=kappa=0 it is all-in stocks iff the horizon-1 forecast mean > 0 and all cash otherwise; with kappa=0.02 there exists a no-trade band (a state where neither buying nor selling is optimal) (`test_nystrup2018.py`).
 9. W_p for equal-size empirical measures equals `scipy.stats.wasserstein_distance` for p=1 to 1e-12; the median barycenter attains a sum-of-W1 no larger than 1000 random perturbations of it (`test_horvath2021.py`).
 10. ROFS/RONS/TA reproduce hand-computed values on a small worked example (`test_horvath2021.py`).
-11. GJR-GARCH ML estimates agree with the `arch` package on the same series (each parameter within 2 of arch's standard errors; log-likelihood within 0.1) (`test_daniel_moskowitz.py`).
+11. GJR-GARCH ML estimates agree with the `arch` package on the same series (each parameter within 2 of arch's standard errors), and under our variance initialisation our log-likelihood is at least as high as at arch's estimates (arch starts the recursion from a backcast, so raw log-likelihoods differ by O(1)) (`test_daniel_moskowitz.py`).
 12. Bear indicator, 126-day market variance and monthly WML aggregation match direct hand computations on a toy series (`test_daniel_moskowitz.py`).
 
 ### Ground truth (slow, simulations; numbers written to `reports/sim_<paper>.md`)

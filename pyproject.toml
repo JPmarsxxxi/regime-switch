@@ -17,6 +17,7 @@ dependencies = [
   "hmmlearn",
   "yfinance",
   "requests",
+  "tabulate",
 ]
 
 [project.optional-dependencies]
