@@ -64,3 +64,14 @@ def test_cv_uses_only_trailing_window():
     bear, choice = shu2024.cross_validate(cands, r, rf, cfg, r.index[600])
     assert (choice["choice"] == "good").mean() > 0.9
     assert bear.loc[choice.index[0]:].notna().all()
+
+
+def test_default_test_start_waits_for_the_latest_candidate():
+    idx = pd.bdate_range("2000-01-03", periods=3000)
+    early = pd.Series(np.nan, index=idx)
+    early.iloc[100:] = 0.0
+    late = pd.Series(np.nan, index=idx)
+    late.iloc[400:] = 1.0
+    cfg = shu2024.Config(val_years=2)
+    start = shu2024.default_test_start({"HMM": {0: early}, "JM": {0.0: early, 5.0: late}}, cfg)
+    assert start == idx[400] + pd.DateOffset(years=2)

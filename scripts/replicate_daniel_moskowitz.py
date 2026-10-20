@@ -68,7 +68,7 @@ def spanning(res, daily):
 
 def section(end, title, paper):
     daily, monthly = load(end)
-    sl = slice(pd.Period("1927-07", "M"), pd.Period(end, "M"))
+    sl = slice(pd.Period("1927-07", "M"), pd.Period(end, "M"))  # see DEVIATIONS.md#D4
     t5, _ = dm.table5(monthly.wml[sl], dm.bear_indicator(monthly.mkt)[sl], dm.market_variance(daily)[sl])
     res = dm.run(daily, monthly)
     res5 = dm.run(daily, monthly, mean_col="(5)")

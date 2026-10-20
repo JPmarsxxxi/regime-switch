@@ -154,33 +154,48 @@ class Result:
     metrics: pd.DataFrame
 
 
-def run(price, rf_daily, cfg: Config | None = None, test_start=None, hmm_raw=None):
-    """`price`: index level; `rf_daily`: daily risk-free return on the same calendar. Returns `Result`.
-    `hmm_raw` may pass a precomputed `hmm_online_raw` series (it is the expensive part)."""
+def candidates(price, rf_daily, cfg: Config | None = None, hmm_raw=None):
+    """Online regimes for every candidate hyperparameter. Returns (simple returns, daily rf, {"JM": {lambda: bear},
+    "HMM": {k: bear}}, raw HMM states). `hmm_raw` may pass a precomputed `hmm_online_raw` series (the expensive part)."""
     cfg = cfg or Config()
     r = price.pct_change().dropna()
     rf = rf_daily.reindex(r.index).ffill()
     excess = r - rf
-    logr = np.log1p(r)
     feat = features(excess)
     # EWM warm-up: the first rows have a near-zero DD and Sortino ratios in the hundreds, which capture a centroid
     valid = feat.notna().all(axis=1).to_numpy().argmax() + cfg.burn_in  # see DEVIATIONS.md#S3
     jm = {lam: jm_online(feat.iloc[valid:], excess.iloc[valid:], lam, cfg).reindex(r.index) for lam in cfg.lambdas}
-    raw = hmm_raw if hmm_raw is not None else hmm_online_raw(logr, cfg)
+    raw = hmm_raw if hmm_raw is not None else hmm_online_raw(np.log1p(r), cfg)
     hm = {k: median_filter(raw, k) for k in cfg.ks}
-    if test_start is None:
-        test_start = r.index[cfg.train - 1] + pd.DateOffset(years=cfg.val_years)
-    jm_bear, jm_choice = cross_validate(jm, r, rf, cfg, test_start)
-    hmm_bear, hmm_choice = cross_validate(hm, r, rf, cfg, test_start)
+    return r, rf, {"JM": jm, "HMM": hm}, raw
+
+
+def default_test_start(cands, cfg: Config):
+    """First day on which every candidate of every model has a full validation window behind it."""
+    first = max(s.first_valid_index() for model in cands.values() for s in model.values())
+    return first + pd.DateOffset(years=cfg.val_years)
+
+
+def evaluate(r, rf, cands, cfg: Config, test_start):
+    """CV-select each model's hyperparameter monthly and run its 0/1 strategy over the test period."""
     test = r.index >= pd.Timestamp(test_start)
     rets, wts = {"B&H": r[test]}, {"B&H": pd.Series(1.0, index=r.index[test])}
-    for name, bear in (("HMM", hmm_bear), ("JM", jm_bear)):
+    bears, choices = {}, {}
+    for name in ("HMM", "JM"):
+        bear, choice = cross_validate(cands[name], r, rf, cfg, test_start)
         b = bear.copy()
         b[~test] = np.nan
         strat, w = zero_one(r.to_numpy(), rf.to_numpy(), b.to_numpy(), cfg.delay, cfg.cost)
         rets[name] = pd.Series(strat, index=r.index)[test]
         wts[name] = pd.Series(w, index=r.index)[test]
+        bears[name], choices[name] = bear[test], choice
     rets, wts = pd.DataFrame(rets), pd.DataFrame(wts)
     met = pd.DataFrame({c: shu_metrics(rets[c], rf[test], wts[c]) for c in rets.columns})
-    return Result(rets, wts, pd.DataFrame({"JM": jm_bear, "HMM": hmm_bear})[test],
-                  {"JM": jm_choice, "HMM": hmm_choice}, {"JM": jm, "HMM": hm}, met)
+    return Result(rets, wts, pd.DataFrame(bears), choices, cands, met)
+
+
+def run(price, rf_daily, cfg: Config | None = None, test_start=None, hmm_raw=None):
+    """`price`: index level; `rf_daily`: daily risk-free return on the same calendar. Returns `Result`."""
+    cfg = cfg or Config()
+    r, rf, cands, _ = candidates(price, rf_daily, cfg, hmm_raw)
+    return evaluate(r, rf, cands, cfg, test_start or default_test_start(cands, cfg))
