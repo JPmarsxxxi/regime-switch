@@ -106,6 +106,14 @@ def horvath_merton(seed, years=20, r=10, bull=MJD_BULL, bear=MJD_BEAR):
     return x, on
 
 
+def horvath_daily(model, seed, years=30):
+    """The paper's hourly gBm / Merton generator aggregated to daily log-returns (7 hours a day), with 1.5 bear
+    episodes per 2 years as in the paper's 10 per 20. A day is regime-on if most of its hours are."""
+    gen = horvath_gbm if model == "gbm" else horvath_merton
+    x, on = gen(seed, years=years, r=years // 2)
+    return x.reshape(-1, 7).sum(axis=1), on.reshape(-1, 7).mean(axis=1) > 0.5
+
+
 def merton_moments(theta, dt=1 / HOURS_PER_YEAR):
     mu, sig, lam, gam, dlt = theta
     return ((mu - sig**2 / 2) + lam * gam) * dt, (sig**2 + lam * (dlt**2 + gam**2)) * dt  # eqs. 39-40
@@ -127,6 +135,7 @@ class MomentumPath:
     var_month: np.ndarray  # true conditional variance of the monthly WML return, as of the month start
     bear: np.ndarray  # true I_B,t-1 for each month
     mkt_var: np.ndarray  # true sigma^2_m,t-1 (annualised) used in the mean
+    regime: np.ndarray  # true daily market regime, 0 = calm, 1 = turbulent
 
 
 def momentum_panic(seed, years=80, gamma0=DM_GAMMA0, gamma_int=DM_GAMMA_INT, gjr=DM_GJR):
@@ -160,4 +169,4 @@ def momentum_panic(seed, years=80, gamma0=DM_GAMMA0, gamma_int=DM_GAMMA_INT, gjr
                 var_month[m] = sum(long_var + persist**j * (h - long_var) for j in range(DAYS_PER_MONTH))
             eps_prev = np.sqrt(h) * rng.standard_normal()
             wml[d] = mu_d + eps_prev
-    return MomentumPath(mkt, wml, month, mu_month, var_month, bear, mkt_var)
+    return MomentumPath(mkt, wml, month, mu_month, var_month, bear, mkt_var, regime)

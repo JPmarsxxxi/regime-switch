@@ -113,6 +113,14 @@ All in `sim.py`, all seeded, all returning the series **and** the true latent pa
 - `horvath_gbm`, `horvath_merton`: the paper's exact synthetic generators (above).
 - `momentum_panic`: daily market returns from a 2-state calm/turbulent Markov chain; daily WML returns whose conditional mean follows the paper's interaction model (true gammas from Table 5 col. 4) and whose variance follows GJR-GARCH with the Appendix D parameters. Returns the true conditional mean and variance for every day.
 
+## Cross-generator study
+
+Every detector on every generator, so the methods are compared on the same truth (`scripts/cross_generators.py` -> `reports/cross_generators.md`).
+
+- Generators (30 years of daily returns each, 5 seeds): `markov_switching_gaussian`, `markov_switching_t`, `drifting_hmm`, `horvath_daily("gbm")`, `horvath_daily("merton")` (the paper's hourly generators summed to days) and the market leg of `momentum_panic`. Truth: the generator's daily regime (1 = bear / turbulent / regime-on).
+- Detectors, each run exactly as its module implements the paper: Shu JM and Shu HMM (full pipeline, CV-selected, online); Nystrup adaptive HMM (filtered probability of the higher-variance state > 0.5, online); Horvath WK-means ((h1, h2) = (35, 28) observations, k = 2, p = 1; a posteriori, majority vote of the segments containing each day); Daniel & Moskowitz bear indicator (24-month cumulative return < 0, set monthly, online). Where the generator is a Markov chain with known parameters, the true-parameter forward filter is the oracle.
+- Scored over one common window per path (Shu's out-of-sample test period): balanced accuracy, shifts per year, median detection latency, and the 0/1 strategy (bear -> cash, 1-day delay, 10 bp, rf = 0) Sharpe, against buy-and-hold and a perfect-hindsight regime strategy with the same delay.
+
 ## Edge cases
 
 - Warm-up: no regime or forecast is produced before a method's window is full (3000 days for Shu, 260 for Nystrup, 126 days / 24 months for D&M); strategies hold the benchmark position (index for 0/1, zero for WML overlays) during warm-up and this is excluded from scored periods.
@@ -159,3 +167,7 @@ Fast suite: `pytest -q` passes in under 5 minutes. Slow suite: `pytest -q -m slo
 ### Hygiene
 24. `DEVIATIONS.md` lists every place the implementation departs from a paper or fills a gap the paper leaves, each with a reason; every DEVIATIONS entry is referenced by an `# see DEVIATIONS.md#<id>` comment at the code site.
 25. `ruff check .` is clean.
+
+### Cross-generator study
+26. `reports/cross_generators.md` has, for every generator, a table with every detector (and the oracle where defined): mean and sd over seeds of balanced accuracy, shifts/yr, latency and 0/1 Sharpe, plus buy-and-hold and perfect-hindsight Sharpe; WK-means is marked a posteriori. No detector errors on any path.
+27. Sanity: on generators with an oracle filter, no detector's mean balanced accuracy exceeds the oracle's by more than 0.02 (the WK-means a posteriori labels excepted, since they see the future).
