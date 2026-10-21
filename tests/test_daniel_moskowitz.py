@@ -57,3 +57,12 @@ def test_ols_recovers_coefficients():
     res, _ = dm.ols(1.0 + 2.0 * x + 0.1 * rng.standard_normal(5000), [x], ["x"])
     assert res.loc["const", "coef"] == pytest.approx(1.0, abs=0.01)
     assert res.loc["x", "coef"] == pytest.approx(2.0, abs=0.01)
+
+
+def test_monthly_aggregation_compounds_daily_returns():
+    daily = pd.DataFrame({"wml": [0.01, -0.02, 0.03, 0.10, -0.05], "mkt": [0.0, 0.01, 0.01, -0.01, 0.02],
+                          "month": [0, 0, 0, 1, 1]})
+    m = dm.monthly_from_daily(daily)
+    assert m.loc[0, "wml"] == pytest.approx(1.01 * 0.98 * 1.03 - 1)
+    assert m.loc[1, "wml"] == pytest.approx(1.10 * 0.95 - 1)
+    assert m.loc[1, "mkt"] == pytest.approx(0.99 * 1.02 - 1)

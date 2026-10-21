@@ -10,7 +10,7 @@ from regime_switch.metrics import nystrup_metrics
 from scripts.common import ROOT, cached
 
 END = "2015-12-31"
-INDICES = {"S&P500": ("^GSPC", "1984-01-01"), "DAX": ("^GDAXI", "1988-01-01"), "FTSE": ("^FTSE", "1984-01-01")}
+INDICES = {"S&P500": ("^GSPC", "1984-01-01"), "DAX": ("^GDAXI", "1988-01-01"), "FTSE": ("^FTSE", "1984-01-01")}  # see DEVIATIONS.md#N1
 ROWS = ["Annualized return", "Standard deviation", "Sharpe ratio", "Maximum drawdown", "Calmar ratio",
         "Annual turnover"]
 PAPER_T1 = {"MPC(g=0, rho=0)": [0.076, 0.12, 0.65, 0.26, 0.29, 4.61], "MPC(g=2, rho=0)": [0.062, 0.10, 0.61, 0.21, 0.29, 5.30],
@@ -30,7 +30,7 @@ def inputs(name):
     return np.log(px).diff().dropna()
 
 
-def saa(simple, weight, kappa=0.001):
+def saa(simple, weight, kappa=0.001):  # RBAA is not reproduced, see DEVIATIONS.md#N5
     """Monthly rebalancing to a fixed stock weight, with proportional costs on the rebalancing trades."""
     month = simple.index.to_period("M")
     w = weight
@@ -70,7 +70,14 @@ def main():
              "the estimator (the paper's choice for these indices), testing starts after them. The paper's Tables 1-2 "
              "are for MSCI World 1997-2015, which has no free daily history; S&P 500 stands in and the paper's MSCI "
              "numbers are shown for reference only. Costs kappa = 0.001, K = 100, long-only. See DEVIATIONS.md#N1-N5.")
-    lines = ["# Nystrup, Madsen & Lindström (2018): replication on free data", "", intro, ""]
+    spans = []
+    for n in INDICES:
+        x = inputs(n)
+        spans.append({"Index": n, "Ticker": INDICES[n][0], "First return": x.index[0].date(),
+                      "Test from": x.index[x.index >= x.index[0] + pd.DateOffset(years=2)][0].date(),
+                      "Last return": x.index[-1].date(), "Days": len(x)})
+    lines = ["# Nystrup, Madsen & Lindström (2018): replication on free data", "", intro, "",
+             "Date ranges actually used:", "", pd.DataFrame(spans).to_markdown(index=False), ""]
     t1 = met[["MPC(g=0, rho=0, delay=0)", "MPC(g=2, rho=0, delay=0)", "MPC(g=0, rho=0.02, delay=0)"]]
     t1.columns = list(PAPER_T1)
     lines += ["## Table 1: MPC with and without risk and trading aversion (no delay)", "", "Ours (S&P 500):", "",

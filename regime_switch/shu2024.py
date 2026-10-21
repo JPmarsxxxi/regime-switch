@@ -69,8 +69,10 @@ def jm_online(feat, excess, lam, cfg: Config):
         mu, sd = Xtr.mean(axis=0), Xtr.std(axis=0)
         centers, states, _ = jump.fit((Xtr - mu) / sd, lam, n_init=cfg.n_init, seed=cfg.seed + i)
         ex_tr = excess.to_numpy()[end - cfg.train : end]
-        cum = np.array([ex_tr[states == k].sum() if np.any(states == k) else -np.inf for k in range(2)])
-        bull = int(np.argmax(cum))
+        occupied = [k for k in range(2) if np.any(states == k)]
+        cum = {k: ex_tr[states == k].sum() for k in occupied}
+        # a fit that collapses to one state labels that state by the sign of its own cumulative excess return
+        bull = max(cum, key=cum.get) if len(occupied) == 2 or cum[occupied[0]] >= 0 else 1 - occupied[0]
         stop = feat.index.get_loc(fits[i + 1]) + 1 if i + 1 < len(fits) else len(feat)
         a = max(0, end - cfg.lookback)
         lab = jump.online_states((X_all[a:stop] - mu) / sd, centers, lam, cfg.lookback, start=end - 1 - a)

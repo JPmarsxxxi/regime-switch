@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from regime_switch import shu2024
 from regime_switch.sim import markov_switching_gaussian
@@ -81,3 +82,16 @@ def test_default_test_start_waits_for_the_latest_candidate():
     late_r.iloc[400:] = np.random.default_rng(1).integers(0, 2, 2600)
     bear, _ = shu2024.cross_validate({0.0: late_r}, r, r * 0, cfg, start)
     assert bear.loc[start:].notna().all()
+
+
+@pytest.mark.parametrize("drift,expected", [(-0.002, 1.0), (0.002, 0.0)])
+def test_collapsed_fit_is_labelled_by_its_own_cumulative_return(monkeypatch, drift, expected):
+    r = pd.Series(drift + 0.01 * np.random.default_rng(0).standard_normal(1600),
+                  index=pd.bdate_range("2000-01-03", periods=1600))
+
+    def one_state(X, lam, **kw):
+        return np.array([X.mean(axis=0), np.full(X.shape[1], np.nan)]), np.zeros(len(X), dtype=int), 0.0
+
+    monkeypatch.setattr(shu2024.jump, "fit", one_state)
+    out = shu2024.jm_online(shu2024.features(r).dropna(), r, 10.0, shu2024.Config(train=1000, lookback=1000))
+    assert set(out.dropna().unique()) == {expected}

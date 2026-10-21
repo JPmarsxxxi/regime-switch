@@ -20,7 +20,7 @@ PAPER_T1 = {"r - rf": 17.9, "sigma": 30.0, "alpha": 22.2, "t(alpha)": 7.3, "beta
 PAPER_T7 = {"dyn on Mkt+WML": (23.74, 11.99), "dyn on Mkt+cvol": (7.27, 6.86), "cvol on Mkt+WML": (14.27, 11.44)}
 
 
-def load(end):
+def load(end):  # Ken French data stands in for CRSP, see DEVIATIONS.md#D1
     d = data.french("10_Portfolios_Prior_12_2_Daily")
     m = data.french("10_Portfolios_Prior_12_2")
     fd = data.french("F-F_Research_Data_Factors_daily")

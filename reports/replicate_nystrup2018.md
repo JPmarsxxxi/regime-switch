@@ -2,6 +2,14 @@
 
 Data: Yahoo Finance closes (`^GSPC`, `^GDAXI`, `^FTSE`) to 2015-12-31; the first two years initialise the estimator (the paper's choice for these indices), testing starts after them. The paper's Tables 1-2 are for MSCI World 1997-2015, which has no free daily history; S&P 500 stands in and the paper's MSCI numbers are shown for reference only. Costs kappa = 0.001, K = 100, long-only. See DEVIATIONS.md#N1-N5.
 
+Date ranges actually used:
+
+| Index   | Ticker   | First return   | Test from   | Last return   |   Days |
+|:--------|:---------|:---------------|:------------|:--------------|-------:|
+| S&P500  | ^GSPC    | 1984-01-04     | 1986-01-06  | 2015-12-31    |   8068 |
+| DAX     | ^GDAXI   | 1988-01-05     | 1990-01-05  | 2015-12-30    |   7070 |
+| FTSE    | ^FTSE    | 1984-01-04     | 1986-01-06  | 2015-12-31    |   8083 |
+
 ## Table 1: MPC with and without risk and trading aversion (no delay)
 
 Ours (S&P 500):

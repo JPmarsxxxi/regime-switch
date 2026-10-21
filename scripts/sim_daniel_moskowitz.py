@@ -16,10 +16,7 @@ DEPS = ["regime_switch/daniel_moskowitz.py", "regime_switch/sim.py", "scripts/si
 
 def frames(path):
     daily = pd.DataFrame({"wml": path.wml, "mkt": path.mkt, "month": path.month})
-    g = daily.groupby("month")
-    monthly = pd.DataFrame({"wml": g.wml.apply(lambda v: np.prod(1 + v) - 1),
-                            "mkt": g.mkt.apply(lambda v: np.prod(1 + v) - 1)})
-    return daily, monthly
+    return daily, dm.monthly_from_daily(daily)
 
 
 def run_seed(seed):

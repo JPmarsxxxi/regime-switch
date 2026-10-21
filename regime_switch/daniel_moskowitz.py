@@ -34,6 +34,11 @@ def bear_indicator(monthly_mkt):
     return (cum.shift(1) < 0).astype(float).where(cum.shift(1).notna())
 
 
+def monthly_from_daily(daily, cols=("wml", "mkt")):
+    """Compound daily simple returns into monthly returns, one row per `month` label."""
+    return daily.groupby("month")[list(cols)].agg(lambda v: np.prod(1 + v) - 1)
+
+
 def pre_month_stat(daily, col, n, fn):
     """fn over the `n` daily observations before the first day of each month (NaN until n are available)."""
     first = daily.groupby("month").apply(lambda g: daily.index.get_loc(g.index[0]))
