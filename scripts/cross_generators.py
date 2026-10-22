@@ -134,7 +134,7 @@ def criteria(df):
         if "Oracle filter" not in set(d.detector):
             continue
         m = d.groupby("detector")["bal.acc"].mean()
-        online = m.drop(["Oracle filter", "Perfect hindsight", "Horvath WK-means (a posteriori)"], errors="ignore")
+        online = m.reindex([x for x in DETECTORS if "a posteriori" not in x]).dropna()
         out[f"27 {g}: no online detector beats the oracle by > 0.02"] = (
             (online <= m["Oracle filter"] + 0.02).all(), f"best online {online.max():.3f} vs oracle {m['Oracle filter']:.3f}")
     return out
@@ -165,9 +165,11 @@ def main():
         lines += ["", f"## {g}", "", head, "", cells.to_markdown()]
         m = d.groupby("detector")[["bal.acc", "Sharpe"]].mean()
         det = m.loc[[x for x in DETECTORS if x in m.index]]
-        summary.append({"generator": g, "best accuracy": det["bal.acc"].idxmax(),
-                        "best Sharpe": det["Sharpe"].idxmax(),
-                        "B&H Sharpe": m.loc["Buy and hold", "Sharpe"]})
+        onl = det.drop("Horvath WK-means (a posteriori)")
+        summary.append({"generator": g, "best online accuracy": onl["bal.acc"].idxmax(),
+                        "best online Sharpe": onl["Sharpe"].idxmax(),
+                        "online Sharpe": onl["Sharpe"].max(), "B&H Sharpe": m.loc["Buy and hold", "Sharpe"],
+                        "hindsight Sharpe": m.loc["Perfect hindsight", "Sharpe"]})
     lines += ["", "## Summary", "", pd.DataFrame(summary).to_markdown(index=False, floatfmt=".2f"), ""]
     (ROOT / "reports" / "cross_generators.md").write_text("\n".join(lines) + "\n")
     print("\n".join(lines[:16]))
