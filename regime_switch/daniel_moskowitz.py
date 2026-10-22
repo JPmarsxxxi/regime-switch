@@ -107,6 +107,7 @@ def gjr_fit(x):
 def vol_forecast(daily, gjr):
     """Appendix D: regress next-month realised daily vol on the GJR-GARCH vol at the month start and the trailing
     126-day realised vol; return the regression, the fitted forecast (daily vol) and both regressors."""
+    # sigma_GARCH,t is the one-step-ahead conditional vol for the month's first day; see DEVIATIONS.md#D5
     h = gjr_variance(daily.wml.to_numpy(), gjr["mu"], gjr["omega"], gjr["alpha"], gjr["gamma"], gjr["beta"])[:-1]
     d = daily.assign(h=h)
     first = d.groupby("month").head(1)

@@ -66,7 +66,7 @@ def jm_online(feat, excess, lam, cfg: Config):
     for i, d in enumerate(fits):
         end = feat.index.get_loc(d) + 1
         Xtr = X_all[end - cfg.train : end]
-        mu, sd = Xtr.mean(axis=0), Xtr.std(axis=0)
+        mu, sd = Xtr.mean(axis=0), Xtr.std(axis=0)  # no 3-sd clipping, see DEVIATIONS.md#S6
         centers, states, _ = jump.fit((Xtr - mu) / sd, lam, n_init=cfg.n_init, seed=cfg.seed + i)
         ex_tr = excess.to_numpy()[end - cfg.train : end]
         occupied = [k for k in range(2) if np.any(states == k)]

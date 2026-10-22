@@ -14,6 +14,8 @@ Every place the code departs from a paper, or fills a gap the paper leaves open,
 
 <a id="S5"></a>**S5. Refit calendar.** "Updated every six months": refits happen at the end of the last trading day of June and December, on the 3000 days ending that day; the fit is used from that day's inference onward.
 
+<a id="S6"></a>**S6. No feature clipping.** The authors' public example code (`jumpmodels`, examples/nasdaq) clips each feature to its training mean +- 3 standard deviations before standardising; the paper does not mention clipping. The paper's text is followed (no clipping). Checked on the S&P 500: clipping changes the online shift counts by at most 0.5/yr (lambda = 0: 15.2 -> 15.7), so it does not explain why our jump-model shift counts are 1.5-1.8x the paper's Table 3 (the HMM counts match to within 0.1/yr). That gap is unexplained.
+
 ## Nystrup, Madsen & Lindström (2018)
 
 <a id="N1"></a>**N1. Data.** Paper: net total-return indices (MSCI World 1997-2015; S&P 500, TOPIX, DAX, FTSE 1984-2015; MSCI EM 1988-2015). MSCI World, TOPIX and MSCI EM have no free daily history. Here: Yahoo `^GSPC` (price index) stands in for the Table 1 analysis, and Table 3 is reproduced for S&P 500 (price), FTSE (price) and DAX (total return, from 1988 instead of 1984).
@@ -25,6 +27,8 @@ Every place the code departs from a paper, or fills a gap the paper leaves open,
 <a id="N4"></a>**N4. Form of the information recursion, and a safety box.** Eq. 7 can be read with `I_t` as the exponentially weighted *mean* of score outer products (so A = 1/N_eff gives a full Newton step) or as the exponentially weighted *sum* `R_t = f R_{t-1} + s_t s_t'` (the recursive-least-squares form, which is what "updated recursively using (6) and the matrix inversion lemma" describes; A = 1/N_eff then damps the step). The mean form was implemented first: on simulated paths 8-11 of 20 held-out seeds degenerated (a regime unvisited for a year loses its information, the Newton steps for its parameters blow up and the state collapses), and on the S&P 500 it collapsed in 1993-95; a damping term only reduced this to 2-3 of 10. The sum form had 0 of 10 degenerate paths and the lowest tracking error on drifting parameters, so it is used. The choice was made on simulation seeds 100-119, which are not used in any reported result, and not on real data. As a pure safety net the parameters are also projected onto a box after each step (daily means within +-1%, daily variances within [1e-8, 1e-2], staying probabilities within [0.5, 0.9999]); with the sum form the box is not hit in the reported runs.
 
 <a id="N5"></a>**N5. Rule-based RBAA benchmark.** Table 2's RBAA comparison depends on the rule of Nystrup et al. (2017) ("probability that a regime change has occurred exceeds 0.9998"), which is not specified in this paper. It is not reproduced. The SAA comparison (monthly rebalanced to MPC(0,0)'s average stock weight) is.
+
+<a id="N6"></a>**N6. Delayed trades.** With a one-day delay the paper says only that decisions are executed the next day "as fractions of the asset holding". Each day's MPC decision is made on that day's holdings before the previous day's decision is executed.
 
 ## Horvath, Issa & Muguruza (2021)
 
@@ -40,6 +44,9 @@ Every place the code departs from a paper, or fills a gap the paper leaves open,
 
 <a id="D2"></a>**D2. Mean forecast column.** Sec. 4 says the mean forecast is "the fitted regression of the WML returns on the interaction between the bear-market indicator and the market variance ... i.e., the regression estimated in the last column of Table 5". The interaction-only regression is column (4); the last column is (5), which also includes the two main effects. Column (4) is used (it matches the verbal description); column (5) is reported alongside.
 
-<a id="D3"></a>**D3. Units of the market variance.** The paper does not state them. With daily variance the Table 5 slopes would be about 250 times larger than printed; with annualised variance (daily variance x 252) our estimates (-0.290, -0.336) land next to the paper's (-0.330, -0.397), so annualised variance is used.
+<a id="D3"></a>**D3. Units of the market variance.** Table 5 does not state them; the international section (Table 8 notes) describes the same variable as "the realized daily market return variance, annualized, over the preceding 126 trading days", which is what is used. With it our estimates (-0.290, -0.336) land next to the paper's (-0.330, -0.397). Table 5 calls it the variance of the market return and Sec. 3.6 of the market excess return; total returns are used (the difference is negligible over 126 days).
 
 <a id="D4"></a>**D4. Sample start.** The paper's regressions start in 1927:07. The bear indicator needs 24 months of market returns, and French's monthly market series starts in 1926:07, so our regressions effectively start in 1928:07 and the strategies in 1929:01.
+
+
+<a id="D5"></a>**D5. Timing of the GARCH regressor.** Appendix D regresses next-month realised vol on "the GJR-GARCH estimate (sigma_GARCH,t)" without saying which horizon. Used: the one-step-ahead conditional volatility for the first day of the month, which uses only information to the end of the previous month.

@@ -229,7 +229,7 @@ def simulate_mpc(simple_returns, means, variances, start, gamma=0.0, rho=0.0, ka
             if pending is not None:
                 frac, side = pending
                 trade = -frac * hn[0] if side == "sell" else frac * hn[1] / (1 + kappa)
-            u = mpc.first_trade(hn, means[t], variances[t])
+            u = mpc.first_trade(hn, means[t], variances[t])  # decided on today's pre-trade holdings, DEVIATIONS.md#N6
             fails += u is None
             u = u or 0.0
             pending = None
