@@ -23,7 +23,7 @@ Every methodological element of each paper, checked against the code. Status: **
 | Test period | 1990-2023 | 1990-2023 (DAX 2009 for lack of data) | Deviation S1 |
 | Metrics | Table 4 definitions | `metrics.shu_metrics` | Match |
 | Data | Bloomberg total returns, GFD 3-month bills | Yahoo price indices (DAX total return), FRED rates | Deviation S1 |
-| Table 3 JM shift counts | lambda = 0: 9.7/yr ... 150: 0.4/yr | 15.2 ... 0.4/yr (HMM counts match within 0.1) | **Open** |
+| Table 3 JM shift counts | lambda = 0: 9.7/yr ... 150: 0.4/yr | 15.2 ... 0.4/yr; the authors' own package gives the same (15.7 ... 0.5) | **Open**: outside the paper and published code (S6) |
 
 ## Nystrup, Madsen & Lindström (2018): `regime_switch/nystrup2018.py`
 
