@@ -86,7 +86,7 @@ def main():
     new = synth_results()
     old = cg.results()
     years = old[old.detector == "Buy and hold"].set_index(["generator", "seed"])["test years"]
-    check = new.groupby(["generator", "seed"])["test years"].first().round(6).equals(years.round(6))
+    check = new.groupby(["generator", "seed"])["test years"].first().round(6).equals(years.sort_index().round(6))
     keep = ["Shu JM", "Shu HMM", "Nystrup adaptive HMM", "Horvath WK-means (a posteriori)", "Oracle filter",
             "Buy and hold"]
     df = pd.concat([old[old.detector.isin(keep)], new])
