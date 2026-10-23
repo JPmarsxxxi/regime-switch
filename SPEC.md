@@ -121,6 +121,14 @@ Every detector on every generator, so the methods are compared on the same truth
 - Detectors, each run exactly as its module implements the paper: Shu JM and Shu HMM (full pipeline, CV-selected, online); Nystrup adaptive HMM (filtered probability of the higher-variance state > 0.5, online); Horvath WK-means ((h1, h2) = (35, 28) observations, k = 2, p = 1; a posteriori, majority vote of the segments containing each day); Daniel & Moskowitz bear indicator (24-month cumulative return < 0, set monthly, online). Where the generator is a Markov chain with known parameters, the true-parameter forward filter is the oracle.
 - Scored over one common window per path (Shu's out-of-sample test period): balanced accuracy, shifts per year, median detection latency, and the 0/1 strategy (bear -> cash, 1-day delay, 10 bp, rf = 0) Sharpe, against buy-and-hold and a perfect-hindsight regime strategy with the same delay.
 
+## Extension: WK-means with an HMM head (not a paper replication)
+
+Horvath et al.'s WK-means labels a finished history and has no notion of persistence. Two variants attach an HMM's Markov layer so it becomes an online, probabilistic, persistent detector (`regime_switch/wk_hmm.py`). Both refit on Shu's calendar (end of June and December, trailing 3000 days) and produce, for every day t, P(regime-on | data to t) from a forward filter; the signal is P > 0.5. Nothing is tuned: every setting comes from a fixed rule below.
+
+- **A. Wasserstein emissions.** Fit: WK-means on the training window ((h1, h2) = (35, 28), k = 2, p = 1). Emission of day t: the sorted last 35 daily returns s_t scored by its W1 distance to each centroid, with the distance treated as exponential within a regime, e_k = exp(-d_k / tau_k) / tau_k, tau_k = mean W1 of the training segments in cluster k to their centroid (the exponential MLE). Transitions: daily regime labels from the segment majority vote over the training window, counted with +1 smoothing. Regime-on: the centroid with the higher variance.
+- **B. Empirical-density HMM.** Fit: WK-means as in A gives daily labels on the training window; these initialise a 2-state HMM whose emission densities are weighted Gaussian kernel density estimates of the training returns (weights = state posteriors, Scott bandwidth), with transitions from the same smoothed counts, refined by 20 EM iterations. Emission of day t: the two densities at that day's return. Regime-on: the state with the higher weighted variance.
+- Scored like every other detector: cross-generator paths and test windows (`reports/wk_hmm.md`, reusing the cached cross-generator results), and point-in-time real data on S&P 500, DAX and Nikkei 225 over the Shu test periods with the 0/1 strategy (1-day delay, 10 bp), next to buy-and-hold and Shu's JM and HMM.
+
 ## Edge cases
 
 - Warm-up: no regime or forecast is produced before a method's window is full (3000 days for Shu, 260 for Nystrup, 126 days / 24 months for D&M); strategies hold the benchmark position (index for 0/1, zero for WML overlays) during warm-up and this is excluded from scored periods.
@@ -171,3 +179,8 @@ Fast suite: `pytest -q` passes in under 5 minutes. Slow suite: `pytest -q -m slo
 ### Cross-generator study
 26. `reports/cross_generators.md` has, for every generator, a table with every detector (and the oracle where defined): mean and sd over seeds of balanced accuracy, shifts/yr, latency and 0/1 Sharpe, plus buy-and-hold and perfect-hindsight Sharpe; WK-means is marked a posteriori. No detector errors on any path.
 27. Sanity: on generators with an oracle filter, no detector's mean balanced accuracy exceeds the oracle's by more than 0.02 (the WK-means a posteriori labels excepted, since they see the future).
+
+### Extension: WK-means with an HMM head
+28. Both variants are online: rewriting returns after day T leaves every signal up to T unchanged (`test_wk_hmm.py`).
+29. Variant A's tau_k equals the mean within-cluster W1 distance; variant B's weighted KDE densities integrate to 1 (+-1e-3) and its forward filter matches `hmm.forward` when given the same emission values (`test_wk_hmm.py`).
+30. `reports/wk_hmm.md` reports both variants on all 30 cross-generator paths with the same metrics and windows as the other detectors, and on S&P 500, DAX and Nikkei 225 point-in-time, with B&H, Shu JM and Shu HMM alongside. Results are reported as they fall; there is no performance threshold.
